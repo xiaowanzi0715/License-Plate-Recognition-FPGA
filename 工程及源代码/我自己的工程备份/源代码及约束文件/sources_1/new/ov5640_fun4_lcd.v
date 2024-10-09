@@ -1,131 +1,104 @@
-//****************************************Copyright (c)***********************************//
-//Ô­×Ó¸çÔÚÏß½ÌÑ§Æ½Ì¨£ºwww.yuanzige.com
-//¼¼ÊõÖ§³Ö£ºwww.openedv.com
-//ÌÔ±¦µêÆÌ£ºhttp://openedv.taobao.com
-//¹Ø×¢Î¢ĞÅ¹«ÖÚÆ½Ì¨Î¢ĞÅºÅ£º"ÕıµãÔ­×Ó"£¬Ãâ·Ñ»ñÈ¡ZYNQ & FPGA & STM32 & LINUX×ÊÁÏ¡£
-//°æÈ¨ËùÓĞ£¬µÁ°æ±Ø¾¿¡£
-//Copyright(C) ÕıµãÔ­×Ó 2018-2028
-//All rights reserved
-//----------------------------------------------------------------------------------------
-// File name:           ov5640_lcd_yuv
-// Last modified Date:  2021/01/04 9:19:08
-// Last Version:        V1.0
-// Descriptions:        OV5640ÉãÏñÍ·LCD»Ò¶ÈÏÔÊ¾
-//                      
-//----------------------------------------------------------------------------------------
-// Created by:          ÕıµãÔ­×Ó
-// Created date:        2019/05/04 9:19:08
-// Version:             V1.0
-// Descriptions:        The original version
-//
-//----------------------------------------------------------------------------------------
-//****************************************************************************************//
-
 module ov5640_fun4_lcd(    	
-    input                 sys_clk      ,  //ÏµÍ³Ê±ÖÓ
-    input                 sys_rst_n    ,  //ÏµÍ³¸´Î»£¬µÍµçÆ½ÓĞĞ§
-    //ÉãÏñÍ·½Ó¿Ú                       
-    input                 cam_pclk     ,  //cmos Êı¾İÏñËØÊ±ÖÓ
-    input                 cam_vsync    ,  //cmos ³¡Í¬²½ĞÅºÅ
-    input                 cam_href     ,  //cmos ĞĞÍ¬²½ĞÅºÅ
-    input   [7:0]         cam_data     ,  //cmos Êı¾İ
-    output                cam_rst_n    ,  //cmos ¸´Î»ĞÅºÅ£¬µÍµçÆ½ÓĞĞ§
-    output                cam_pwdn ,      //µçÔ´ĞİÃßÄ£Ê½Ñ¡Ôñ 0£ºÕı³£Ä£Ê½ 1£ºµçÔ´ĞİÃßÄ£Ê½
-    output                cam_scl      ,  //cmos SCCB_SCLÏß
-    inout                 cam_sda      ,  //cmos SCCB_SDAÏß       
-    // DDR3                            
-    inout   [31:0]        ddr3_dq      ,  //DDR3 Êı¾İ
-    inout   [3:0]         ddr3_dqs_n   ,  //DDR3 dqs¸º
-    inout   [3:0]         ddr3_dqs_p   ,  //DDR3 dqsÕı  
-    output  [13:0]        ddr3_addr    ,  //DDR3 µØÖ·   
-    output  [2:0]         ddr3_ba      ,  //DDR3 banck Ñ¡Ôñ
-    output                ddr3_ras_n   ,  //DDR3 ĞĞÑ¡Ôñ
-    output                ddr3_cas_n   ,  //DDR3 ÁĞÑ¡Ôñ
-    output                ddr3_we_n    ,  //DDR3 ¶ÁĞ´Ñ¡Ôñ
-    output                ddr3_reset_n ,  //DDR3 ¸´Î»
-    output  [0:0]         ddr3_ck_p    ,  //DDR3 Ê±ÖÓÕı
-    output  [0:0]         ddr3_ck_n    ,  //DDR3 Ê±ÖÓ¸º
-    output  [0:0]         ddr3_cke     ,  //DDR3 Ê±ÖÓÊ¹ÄÜ
-    output  [0:0]         ddr3_cs_n    ,  //DDR3 Æ¬Ñ¡
-    output  [3:0]         ddr3_dm      ,  //DDR3_dm
-    output  [0:0]         ddr3_odt     ,  //DDR3_odt									   
-    //lcd½Ó¿Ú                           
-    output                lcd_hs       ,  //LCD ĞĞÍ¬²½ĞÅºÅ
-    output                lcd_vs       ,  //LCD ³¡Í¬²½ĞÅºÅ
-    output                lcd_de       ,  //LCD Êı¾İÊäÈëÊ¹ÄÜ
-    inout       [23:0]    lcd_rgb      ,  //LCD ÑÕÉ«Êı¾İ
-    output                lcd_bl       ,  //LCD ±³¹â¿ØÖÆĞÅºÅ
-    output                lcd_rst      ,  //LCD ¸´Î»ĞÅºÅ
-    output                lcd_pclk        //LCD ²ÉÑùÊ±ÖÓ	
-	
-    );                                 
+    input                 sys_clk      ,  // ç³»ç»Ÿæ—¶é’Ÿ
+    input                 sys_rst_n    ,  // ç³»ç»Ÿå¤ä½ä¿¡å·ï¼Œä½ç”µå¹³æœ‰æ•ˆ
+    // æ‘„åƒå¤´æ¥å£ 
+    input                 cam_pclk     ,  // CMOSæ•°æ®åƒç´ æ—¶é’Ÿ
+    input                 cam_vsync    ,  // CMOSåœºåŒæ­¥ä¿¡å·
+    input                 cam_href     ,  // CMOSè¡ŒåŒæ­¥ä¿¡å·
+    input   [7:0]         cam_data     ,  // CMOSæ•°æ®
+    output                cam_rst_n    ,  // CMOSå¤ä½ä¿¡å·ï¼Œä½ç”µå¹³æœ‰æ•ˆ
+    output                cam_pwdn ,      // ç”µæºä¼‘çœ æ¨¡å¼é€‰æ‹©ï¼Œ0: æ­£å¸¸æ¨¡å¼ï¼Œ1: ç”µæºä¼‘çœ æ¨¡å¼
+    output                cam_scl      ,  // CMOSçš„SCCBæ—¶é’Ÿçº¿
+    inout                 cam_sda      ,  // CMOSçš„SCCBæ•°æ®çº¿      
+    // DDR3æ¥å£ 
+    inout   [31:0]        ddr3_dq      ,  // DDR3æ•°æ®
+    inout   [3:0]         ddr3_dqs_n   ,  // DDR3 DQSè´Ÿä¿¡å·
+    inout   [3:0]         ddr3_dqs_p   ,  // DDR3 DQSæ­£ä¿¡å·
+    output  [13:0]        ddr3_addr    ,  // DDR3åœ°å€æ€»çº¿
+    output  [2:0]         ddr3_ba      ,  // DDR3 banké€‰æ‹©
+    output                ddr3_ras_n   ,  // DDR3è¡Œé€‰ä¿¡å·
+    output                ddr3_cas_n   ,  // DDR3åˆ—é€‰ä¿¡å·
+    output                ddr3_we_n    ,  // DDR3å†™ä½¿èƒ½
+    output                ddr3_reset_n ,  // DDR3å¤ä½ä¿¡å·
+    output  [0:0]         ddr3_ck_p    ,  // DDR3æ—¶é’Ÿæ­£
+    output  [0:0]         ddr3_ck_n    ,  // DDR3æ—¶é’Ÿè´Ÿ
+    output  [0:0]         ddr3_cke     ,  // DDR3æ—¶é’Ÿä½¿èƒ½
+    output  [0:0]         ddr3_cs_n    ,  // DDR3ç‰‡é€‰ä¿¡å·
+    output  [3:0]         ddr3_dm      ,  // DDR3æ•°æ®æ©ç 
+    output  [0:0]         ddr3_odt     ,  // DDR3ç»ˆç«¯åŒ¹é…ä¿¡å·
+    // LCDæ¥å£
+    output                lcd_hs       ,  // LCDè¡ŒåŒæ­¥ä¿¡å·
+    output                lcd_vs       ,  // LCDåœºåŒæ­¥ä¿¡å·
+    output                lcd_de       ,  // LCDæ•°æ®è¾“å…¥ä½¿èƒ½
+    inout       [23:0]    lcd_rgb      ,  // LCDé¢œè‰²æ•°æ®
+    output                lcd_bl       ,  // LCDèƒŒå…‰æ§åˆ¶ä¿¡å·
+    output                lcd_rst      ,  // LCDå¤ä½ä¿¡å·
+    output                lcd_pclk        // LCDé‡‡æ ·æ—¶é’Ÿ	
+    );                                
 									   							   
-//wire define                          
-wire         clk_50m                   ;  //50mhzÊ±ÖÓ,Ìá¹©¸ølcdÇı¶¯Ê±ÖÓ
-wire         locked                    ;  //Ê±ÖÓËø¶¨ĞÅºÅ
-wire         rst_n                     ;  //È«¾Ö¸´Î» 								    						    
-wire         wr_en                     ;  //DDR3¿ØÖÆÆ÷Ä£¿éĞ´Ê¹ÄÜ
-wire  [15:0] wr_data                   ;  //DDR3¿ØÖÆÆ÷Ä£¿éĞ´Êı¾İ
-wire         rdata_req                 ;  //DDR3¿ØÖÆÆ÷Ä£¿é¶ÁÊ¹ÄÜ
-wire  [15:0] rd_data                   ;  //DDR3¿ØÖÆÆ÷Ä£¿é¶ÁÊı¾İ
-wire         cmos_frame_valid          ;  //Êı¾İÓĞĞ§Ê¹ÄÜĞÅºÅ
-wire         init_calib_complete       ;  //DDR3³õÊ¼»¯Íê³Éinit_calib_complete
-wire         sys_init_done             ;  //ÏµÍ³³õÊ¼»¯Íê³É(DDR³õÊ¼»¯+ÉãÏñÍ·³õÊ¼»¯)
-wire         clk_200m                  ;  //ddr3²Î¿¼Ê±ÖÓ
-wire         cmos_frame_vsync          ;  //Êä³öÖ¡ÓĞĞ§³¡Í¬²½ĞÅºÅ
-wire         cmos_frame_href           ;  //Êä³öÖ¡ÓĞĞ§ĞĞÍ¬²½ĞÅºÅ 
-wire  [12:0] h_disp                    ;  //LCDÆÁË®Æ½·Ö±æÂÊ
-wire  [12:0] v_disp                    ;  //LCDÆÁ´¹Ö±·Ö±æÂÊ     
-wire  [10:0] h_pixel                   ;  //´æÈëddr3µÄË®Æ½·Ö±æÂÊ        
-wire  [10:0] v_pixel                   ;  //´æÈëddr3µÄÆÁ´¹Ö±·Ö±æÂÊ 
-wire  [27:0] ddr3_addr_max             ;  //´æÈëDDR3µÄ×î´ó¶ÁĞ´µØÖ· 
-wire  [12:0] total_h_pixel             ;  //Ë®Æ½×ÜÏñËØ´óĞ¡ 
-wire  [12:0] total_v_pixel             ;  //´¹Ö±×ÜÏñËØ´óĞ¡
-wire  [10:0] pixel_xpos_w              ;
-wire  [10:0] pixel_ypos_w              ;
-wire         post_frame_vsync          ;
-wire         post_frame_hsync          ;
-wire         post_frame_de             ;    
-wire  [15:0] post_rgb                  ;
-wire  [15:0] lcd_id                    ;
+// wireä¿¡å·å®šä¹‰
+wire         clk_50m                   ;  // 50MHzæ—¶é’Ÿï¼Œæä¾›ç»™LCDé©±åŠ¨
+wire         locked                    ;  // æ—¶é’Ÿé”å®šä¿¡å·
+wire         rst_n                     ;  // å…¨å±€å¤ä½ä¿¡å·
+wire         wr_en                     ;  // DDR3æ§åˆ¶æ¨¡å—å†™ä½¿èƒ½
+wire  [15:0] wr_data                   ;  // DDR3æ§åˆ¶æ¨¡å—å†™æ•°æ®
+wire         rdata_req                 ;  // DDR3æ§åˆ¶æ¨¡å—è¯»ä½¿èƒ½
+wire  [15:0] rd_data                   ;  // DDR3æ§åˆ¶æ¨¡å—è¯»æ•°æ®
+wire         cmos_frame_valid          ;  // æ•°æ®æœ‰æ•ˆä½¿èƒ½ä¿¡å·
+wire         init_calib_complete       ;  // DDR3åˆå§‹åŒ–å®Œæˆä¿¡å·
+wire         sys_init_done             ;  // ç³»ç»Ÿåˆå§‹åŒ–å®Œæˆï¼ˆåŒ…æ‹¬DDRå’Œæ‘„åƒå¤´ï¼‰
+wire         clk_200m                  ;  // DDR3å‚è€ƒæ—¶é’Ÿ
+wire         cmos_frame_vsync          ;  // è¾“å‡ºå¸§åŒæ­¥ä¿¡å·
+wire         cmos_frame_href           ;  // è¾“å‡ºè¡ŒåŒæ­¥ä¿¡å· 
+wire  [12:0] h_disp                    ;  // LCDæ°´å¹³åˆ†è¾¨ç‡
+wire  [12:0] v_disp                    ;  // LCDå‚ç›´åˆ†è¾¨ç‡
+wire  [10:0] h_pixel                   ;  // å­˜å…¥DDR3çš„æ°´å¹³åˆ†è¾¨ç‡        
+wire  [10:0] v_pixel                   ;  // å­˜å…¥DDR3çš„å‚ç›´åˆ†è¾¨ç‡
+wire  [27:0] ddr3_addr_max             ;  // å­˜å…¥DDR3çš„æœ€å¤§è¯»å†™åœ°å€
+wire  [12:0] total_h_pixel             ;  // æ°´å¹³æ€»åƒç´ å¤§å°
+wire  [12:0] total_v_pixel             ;  // å‚ç›´æ€»åƒç´ å¤§å°
+wire  [10:0] pixel_xpos_w              ;  // å½“å‰åƒç´ çš„æ°´å¹³ä½ç½®
+wire  [10:0] pixel_ypos_w              ;  // å½“å‰åƒç´ çš„å‚ç›´ä½ç½®
+wire         post_frame_vsync          ;  // å¤„ç†åå¸§åŒæ­¥ä¿¡å·
+wire         post_frame_hsync          ;  // å¤„ç†åè¡ŒåŒæ­¥ä¿¡å·
+wire         post_frame_de             ;  // å¤„ç†åæ•°æ®è¾“å…¥ä½¿èƒ½
+wire  [15:0] post_rgb                  ;  // å¤„ç†åçš„RGBæ•°æ®
+wire  [15:0] lcd_id                    ;  // LCDçš„IDå·
 
 //*****************************************************
-//**                    main code
+//**                    ä¸»ä½“ä»£ç 
 //*****************************************************
-//´ıÊ±ÖÓËø¶¨ºó²úÉú¸´Î»½áÊøĞÅºÅ
+// åœ¨æ—¶é’Ÿé”å®šåäº§ç”Ÿå¤ä½ä¿¡å·
 assign  rst_n = sys_rst_n & locked;
 
-//ÏµÍ³³õÊ¼»¯Íê³É£ºDDR3³õÊ¼»¯Íê³É
+// ç³»ç»Ÿåˆå§‹åŒ–å®Œæˆï¼šDDR3åˆå§‹åŒ–å®Œæˆ
 assign  sys_init_done = init_calib_complete;
 
-//ÉãÏñÍ·Í¼Ïñ·Ö±æÂÊÉèÖÃÄ£¿é
+// æ‘„åƒå¤´å›¾åƒåˆ†è¾¨ç‡è®¾ç½®æ¨¡å—
 picture_size u_picture_size (
     .rst_n              (rst_n),
-    .clk                (clk_50m  ),    
-    .ID_lcd             (lcd_id),           //LCDµÄÆ÷¼şID
-                        
-    .cmos_h_pixel       (h_disp  ),         //ÉãÏñÍ·Ë®Æ½·Ö±æÂÊ
-    .cmos_v_pixel       (v_disp  ),         //ÉãÏñÍ·´¹Ö±·Ö±æÂÊ  
-    .total_h_pixel      (total_h_pixel ),   //Ë®Æ½×ÜÏñËØ´óĞ¡
-    .total_v_pixel      (total_v_pixel ),   //´¹Ö±×ÜÏñËØ´óĞ¡
-    .sdram_max_addr     (ddr3_addr_max)     //ddr3×î´ó¶ÁĞ´µØÖ·
-    );
-   
- //ov5640 Çı¶¯
+    .clk                (clk_50m),    
+    .ID_lcd             (lcd_id),           // LCDå±å¹•ID
+    .cmos_h_pixel       (h_disp),           // æ‘„åƒå¤´æ°´å¹³åˆ†è¾¨ç‡
+    .cmos_v_pixel       (v_disp),           // æ‘„åƒå¤´å‚ç›´åˆ†è¾¨ç‡  
+    .total_h_pixel      (total_h_pixel),    // æ°´å¹³æ€»åƒç´ 
+    .total_v_pixel      (total_v_pixel),    // å‚ç›´æ€»åƒç´ 
+    .sdram_max_addr     (ddr3_addr_max)     // DDR3æœ€å¤§è¯»å†™åœ°å€
+);
+
+// OV5640æ‘„åƒå¤´é©±åŠ¨æ¨¡å—
 ov5640_dri u_ov5640_dri(
     .clk               (clk_50m),
     .rst_n             (rst_n),
-
-    .cam_pclk          (cam_pclk ),
+    .cam_pclk          (cam_pclk),
     .cam_vsync         (cam_vsync),
-    .cam_href          (cam_href ),
-    .cam_data          (cam_data ),
+    .cam_href          (cam_href),
+    .cam_data          (cam_data),
     .cam_rst_n         (cam_rst_n),
-    .cam_pwdn          (cam_pwdn ),
-    .cam_scl           (cam_scl  ),
-    .cam_sda           (cam_sda  ),
-    
-    .capture_start     (init_calib_complete),
+    .cam_pwdn          (cam_pwdn),
+    .cam_scl           (cam_scl),
+    .cam_sda           (cam_sda),
+    .capture_start     (init_calib_complete),  // å¼€å§‹æ•æ‰å›¾åƒ
     .cmos_h_pixel      (h_disp),
     .cmos_v_pixel      (v_disp),
     .total_h_pixel     (total_h_pixel),
@@ -133,106 +106,104 @@ ov5640_dri u_ov5640_dri(
     .cmos_frame_vsync  (cmos_frame_vsync),
     .cmos_frame_href   (cmos_frame_href),
     .cmos_frame_valid  (cmos_frame_valid),
-    .cmos_frame_data   (wr_data)
-    );   
-    
- //Í¼Ïñ´¦ÀíÄ£¿é
+    .cmos_frame_data   (wr_data)             // å†™å…¥çš„æ•°æ®
+);
+
+// å›¾åƒå¤„ç†æ¨¡å—
 image_process u_image_process(
-    //module clock
-    .clk              (cam_pclk),           // Ê±ÖÓĞÅºÅ
-    .rst_n            (rst_n    ),          // ¸´Î»ĞÅºÅ£¨µÍÓĞĞ§£©
-    //Í¼Ïñ´¦ÀíÇ°µÄÊı¾İ½Ó¿Ú
-    .pre_frame_vsync  (cmos_frame_vsync   ),
-    .pre_frame_hsync  (cmos_frame_href   ),
-    .pre_frame_de     (cmos_frame_valid   ),
+    .clk              (cam_pclk),             // æ—¶é’Ÿä¿¡å·
+    .rst_n            (rst_n),                // å¤ä½ä¿¡å·ï¼ˆä½æœ‰æ•ˆï¼‰
+    // å›¾åƒå¤„ç†å‰çš„æ•°æ®æ¥å£
+    .pre_frame_vsync  (cmos_frame_vsync),
+    .pre_frame_hsync  (cmos_frame_href),
+    .pre_frame_de     (cmos_frame_valid),
     .pre_rgb          (wr_data),
-    .xpos             (pixel_xpos_w   ),
-    .ypos             (pixel_ypos_w   ),
-    //Í¼Ïñ´¦ÀíºóµÄÊı¾İ½Ó¿Ú
-    .post_frame_vsync (post_frame_vsync ),  // ³¡Í¬²½ĞÅºÅ
-    .post_frame_hsync (post_frame_href ),   // ĞĞÍ¬²½ĞÅºÅ
-    .post_frame_de    (post_frame_de ),     // Êı¾İÊäÈëÊ¹ÄÜ
-    .post_rgb         (post_rgb)            // RGB565ÑÕÉ«Êı¾İ
+    .xpos             (pixel_xpos_w),         // å½“å‰åƒç´ çš„æ°´å¹³ä½ç½®
+    .ypos             (pixel_ypos_w),         // å½“å‰åƒç´ çš„å‚ç›´ä½ç½®
+    // å›¾åƒå¤„ç†åçš„æ•°æ®æ¥å£
+    .post_frame_vsync (post_frame_vsync),     // å¤„ç†ååœºåŒæ­¥ä¿¡å·
+    .post_frame_hsync (post_frame_href),      // å¤„ç†åè¡ŒåŒæ­¥ä¿¡å·
+    .post_frame_de    (post_frame_de),        // å¤„ç†åæ•°æ®è¾“å…¥ä½¿èƒ½
+    .post_rgb         (post_rgb)              // å¤„ç†åRGBæ•°æ®
+);
 
-);       
-
+// DDR3æ§åˆ¶æ¨¡å—
 ddr3_top u_ddr3_top (
-    .clk_200m              (clk_200m),              //ÏµÍ³Ê±ÖÓ
-    .sys_rst_n             (rst_n),                 //¸´Î»,µÍÓĞĞ§
-    .sys_init_done         (sys_init_done),         //ÏµÍ³³õÊ¼»¯Íê³É
-    .init_calib_complete   (init_calib_complete),   //ddr3³õÊ¼»¯Íê³ÉĞÅºÅ    
-    //ddr3½Ó¿ÚĞÅºÅ         
-    .app_addr_rd_min       (28'd0),                 //¶ÁDDR3µÄÆğÊ¼µØÖ·
-    .app_addr_rd_max       (ddr3_addr_max[27:1]),   //¶ÁDDR3µÄ½áÊøµØÖ·
-    .rd_bust_len           (h_disp[10:4]),          //´ÓDDR3ÖĞ¶ÁÊı¾İÊ±µÄÍ»·¢³¤¶È
-    .app_addr_wr_min       (28'd0),                 //Ğ´DDR3µÄÆğÊ¼µØÖ·
-    .app_addr_wr_max       (ddr3_addr_max[27:1]),   //Ğ´DDR3µÄ½áÊøµØÖ·
-    .wr_bust_len           (h_disp[10:4]),          //´ÓDDR3ÖĞĞ´Êı¾İÊ±µÄÍ»·¢³¤¶È
-    // DDR3 IO½Ó¿Ú                
-    .ddr3_dq               (ddr3_dq),               //DDR3 Êı¾İ
-    .ddr3_dqs_n            (ddr3_dqs_n),            //DDR3 dqs¸º
-    .ddr3_dqs_p            (ddr3_dqs_p),            //DDR3 dqsÕı  
-    .ddr3_addr             (ddr3_addr),             //DDR3 µØÖ·   
-    .ddr3_ba               (ddr3_ba),               //DDR3 banck Ñ¡Ôñ
-    .ddr3_ras_n            (ddr3_ras_n),            //DDR3 ĞĞÑ¡Ôñ
-    .ddr3_cas_n            (ddr3_cas_n),            //DDR3 ÁĞÑ¡Ôñ
-    .ddr3_we_n             (ddr3_we_n),             //DDR3 ¶ÁĞ´Ñ¡Ôñ
-    .ddr3_reset_n          (ddr3_reset_n),          //DDR3 ¸´Î»
-    .ddr3_ck_p             (ddr3_ck_p),             //DDR3 Ê±ÖÓÕı
-    .ddr3_ck_n             (ddr3_ck_n),             //DDR3 Ê±ÖÓ¸º  
-    .ddr3_cke              (ddr3_cke),              //DDR3 Ê±ÖÓÊ¹ÄÜ
-    .ddr3_cs_n             (ddr3_cs_n),             //DDR3 Æ¬Ñ¡
-    .ddr3_dm               (ddr3_dm),               //DDR3_dm
-    .ddr3_odt              (ddr3_odt),              //DDR3_odt
-    //ÓÃ»§
-    .ddr3_read_valid       (1'b1),                  //DDR3 ¶ÁÊ¹ÄÜ
-    .ddr3_pingpang_en      (1'b1),                  //DDR3 Æ¹ÅÒ²Ù×÷Ê¹ÄÜ
-    .wr_clk                (cam_pclk),              //Ğ´Ê±ÖÓ
-    .wr_load               (post_frame_vsync),      //ÊäÈëÔ´¸üĞÂĞÅºÅ   
-	.datain_valid          (post_frame_de),         //Êı¾İÓĞĞ§Ê¹ÄÜĞÅºÅ
-    .datain                (post_rgb),              //ÓĞĞ§Êı¾İ 
-    .rd_clk                (lcd_clk),               //¶ÁÊ±ÖÓ 
-    .rd_load               (rd_vsync),              //Êä³öÔ´¸üĞÂĞÅºÅ    
-    .dataout               (rd_data),               //rfifoÊä³öÊı¾İ
-    .rdata_req             (rdata_req)              //ÇëÇóÊı¾İÊäÈë     
-     );  
-	 
- clk_wiz_0 u_clk_wiz_0
-   (
-    // Clock out ports
-    .clk_out1              (clk_200m),     
-    .clk_out2              (clk_50m),
-    // Status and control signals
-    .reset                 (1'b0), 
-    .locked                (locked),       
-   // Clock in ports
-    .clk_in1               (sys_clk)
-    );     
+    .clk_200m              (clk_200m),            // ç³»ç»Ÿæ—¶é’Ÿ
+    .sys_rst_n             (rst_n),               // å¤ä½ï¼Œä½æœ‰æ•ˆ
+    .sys_init_done         (sys_init_done),       // ç³»ç»Ÿåˆå§‹åŒ–å®Œæˆ
+    .init_calib_complete   (init_calib_complete), // DDR3åˆå§‹åŒ–å®Œæˆ
+    // DDR3æ¥å£ä¿¡å·
+    .app_addr_rd_min       (28'd0),                 // è¯»DDR3çš„èµ·å§‹åœ°å€
+    .app_addr_rd_max       (ddr3_addr_max[27:1]),   // è¯»DDR3çš„ç»“æŸåœ°å€
+    .rd_bust_len           (h_disp[10:4]),          // ä»DDR3ä¸­è¯»æ•°æ®æ—¶çš„çªå‘é•¿åº¦
+    .app_addr_wr_min       (28'd0),                 // å†™DDR3çš„èµ·å§‹åœ°å€
+    .app_addr_wr_max       (ddr3_addr_max[27:1]),   // å†™DDR3çš„ç»“æŸåœ°å€
+    .wr_bust_len           (h_disp[10:4]),          // ä»DDR3ä¸­å†™æ•°æ®æ—¶çš„çªå‘é•¿åº¦
+    // DDR3 IOæ¥å£
+    .ddr3_dq               (ddr3_dq),               // DDR3æ•°æ®
+    .ddr3_dqs_n            (ddr3_dqs_n),            // DDR3 DQSè´Ÿä¿¡å·
+    .ddr3_dqs_p            (ddr3_dqs_p),            // DDR3 DQSæ­£ä¿¡å·
+    .ddr3_addr             (ddr3_addr),             // DDR3åœ°å€æ€»çº¿
+    .ddr3_ba               (ddr3_ba),               // DDR3 banké€‰æ‹©
+    .ddr3_ras_n            (ddr3_ras_n),            // DDR3è¡Œé€‰ä¿¡å·
+    .ddr3_cas_n            (ddr3_cas_n),            // DDR3åˆ—é€‰ä¿¡å·
+    .ddr3_we_n             (ddr3_we_n),             // DDR3å†™ä½¿èƒ½ä¿¡å·
+    .ddr3_reset_n          (ddr3_reset_n),          // DDR3å¤ä½ä¿¡å·
+    .ddr3_ck_p             (ddr3_ck_p),             // DDR3æ—¶é’Ÿæ­£ä¿¡å·
+    .ddr3_ck_n             (ddr3_ck_n),             // DDR3æ—¶é’Ÿè´Ÿä¿¡å·
+    .ddr3_cke              (ddr3_cke),              // DDR3æ—¶é’Ÿä½¿èƒ½ä¿¡å·
+    .ddr3_cs_n             (ddr3_cs_n),             // DDR3ç‰‡é€‰ä¿¡å·
+    .ddr3_dm               (ddr3_dm),               // DDR3æ•°æ®æ©ç 
+    .ddr3_odt              (ddr3_odt),              // DDR3ç»ˆç«¯åŒ¹é…ä¿¡å·
+    // ç”¨æˆ·æ¥å£
+    .ddr3_read_valid       (1'b1),                  // DDR3è¯»ä½¿èƒ½
+    .ddr3_pingpang_en      (1'b1),                  // DDR3ä¹’ä¹“æ“ä½œä½¿èƒ½
+    .wr_clk                (cam_pclk),              // å†™æ—¶é’Ÿï¼ˆä¸æ‘„åƒå¤´åƒç´ æ—¶é’ŸåŒæ­¥ï¼‰
+    .wr_load               (post_frame_vsync),      // å†™å…¥æºæ›´æ–°ä¿¡å·
+    .datain_valid          (post_frame_de),         // æ•°æ®æœ‰æ•ˆä½¿èƒ½ä¿¡å·
+    .datain                (post_rgb),              // å†™å…¥çš„æ•°æ®
+    .rd_clk                (lcd_clk),               // è¯»æ—¶é’Ÿï¼ˆä¸LCDæ—¶é’ŸåŒæ­¥ï¼‰
+    .rd_load               (rd_vsync),              // è¾“å‡ºæºæ›´æ–°ä¿¡å·
+    .dataout               (rd_data),               // DDR3è¯»å‡ºçš„æ•°æ®
+    .rdata_req             (rdata_req)              // è¯·æ±‚æ•°æ®è¾“å…¥ä¿¡å·
+);  
 
-//LCDÇı¶¯ÏÔÊ¾Ä£¿é
-lcd_rgb_top  u_lcd_rgb_top(
-	.sys_clk               (clk_50m  ),
-    .sys_rst_n             (rst_n ),
-	.sys_init_done         (sys_init_done),		
-				           
-    //lcd½Ó¿Ú 				           
-    .lcd_id                (lcd_id),                //LCDÆÁµÄIDºÅ 
-    .lcd_hs                (lcd_hs),                //LCD ĞĞÍ¬²½ĞÅºÅ
-    .lcd_vs                (lcd_vs),                //LCD ³¡Í¬²½ĞÅºÅ
-    .lcd_de                (lcd_de),                //LCD Êı¾İÊäÈëÊ¹ÄÜ
-    .lcd_rgb               (lcd_rgb),               //LCD ÑÕÉ«Êı¾İ
-    .lcd_bl                (lcd_bl),                //LCD ±³¹â¿ØÖÆĞÅºÅ
-    .lcd_rst               (lcd_rst),               //LCD ¸´Î»ĞÅºÅ
-    .lcd_pclk              (lcd_pclk),              //LCD ²ÉÑùÊ±ÖÓ
-    .lcd_clk               (lcd_clk), 	            //LCD Çı¶¯Ê±ÖÓ
-	//ÓÃ»§½Ó¿Ú			           
-    .out_vsync             (rd_vsync),              //lcd³¡ĞÅºÅ
-    .h_disp                (),                      //ĞĞ·Ö±æÂÊ  
-    .v_disp                (),                      //³¡·Ö±æÂÊ  
-    .pixel_xpos            (pixel_xpos_w),
-    .pixel_ypos            (pixel_ypos_w),       
-    .data_in               (rd_data),	            //rfifoÊä³öÊı¾İ
-    .data_req              (rdata_req)              //ÇëÇóÊı¾İÊäÈë
-    );   
+// æ—¶é’Ÿç®¡ç†æ¨¡å—ï¼šç”Ÿæˆ50MHzå’Œ200MHzæ—¶é’Ÿ
+clk_wiz_0 u_clk_wiz_0 (
+    // Clock out ports
+    .clk_out1              (clk_200m),     // 200MHzæ—¶é’Ÿè¾“å‡º
+    .clk_out2              (clk_50m),      // 50MHzæ—¶é’Ÿè¾“å‡º
+    // Status and control signals
+    .reset                 (1'b0),         // å¤ä½ä¿¡å·
+    .locked                (locked),       // æ—¶é’Ÿé”å®šä¿¡å·
+    // Clock in ports
+    .clk_in1               (sys_clk)       // è¾“å…¥æ—¶é’Ÿ
+);     
+
+// LCDé©±åŠ¨æ˜¾ç¤ºæ¨¡å—
+lcd_rgb_top  u_lcd_rgb_top (
+    .sys_clk               (clk_50m),            // ç³»ç»Ÿæ—¶é’Ÿ
+    .sys_rst_n             (rst_n),              // ç³»ç»Ÿå¤ä½ä¿¡å·
+    .sys_init_done         (sys_init_done),      // ç³»ç»Ÿåˆå§‹åŒ–å®Œæˆ
+    // LCDæ¥å£ä¿¡å·
+    .lcd_id                (lcd_id),             // LCDå±çš„IDå·
+    .lcd_hs                (lcd_hs),             // LCDè¡ŒåŒæ­¥ä¿¡å·
+    .lcd_vs                (lcd_vs),             // LCDåœºåŒæ­¥ä¿¡å·
+    .lcd_de                (lcd_de),             // LCDæ•°æ®è¾“å…¥ä½¿èƒ½
+    .lcd_rgb               (lcd_rgb),            // LCD RGBé¢œè‰²æ•°æ®
+    .lcd_bl                (lcd_bl),             // LCDèƒŒå…‰æ§åˆ¶ä¿¡å·
+    .lcd_rst               (lcd_rst),            // LCDå¤ä½ä¿¡å·
+    .lcd_pclk              (lcd_pclk),           // LCDé‡‡æ ·æ—¶é’Ÿ
+    .lcd_clk               (lcd_clk),            // LCDé©±åŠ¨æ—¶é’Ÿ
+    // ç”¨æˆ·æ¥å£ä¿¡å·
+    .out_vsync             (rd_vsync),           // LCDåœºåŒæ­¥ä¿¡å·
+    .h_disp                (),                   // æ°´å¹³åˆ†è¾¨ç‡ï¼ˆæœªè¿æ¥ï¼‰
+    .v_disp                (),                   // å‚ç›´åˆ†è¾¨ç‡ï¼ˆæœªè¿æ¥ï¼‰
+    .pixel_xpos            (pixel_xpos_w),       // å½“å‰åƒç´ çš„æ°´å¹³ä½ç½®
+    .pixel_ypos            (pixel_ypos_w),       // å½“å‰åƒç´ çš„å‚ç›´ä½ç½®
+    .data_in               (rd_data),            // DDR3è¯»å–çš„æ•°æ®
+    .data_req              (rdata_req)           // è¯·æ±‚æ•°æ®è¾“å…¥ä¿¡å·
+);   
 
 endmodule

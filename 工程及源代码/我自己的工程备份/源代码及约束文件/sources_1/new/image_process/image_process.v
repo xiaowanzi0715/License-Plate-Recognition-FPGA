@@ -1,742 +1,417 @@
-//****************************************Copyright (c)***********************************//
-//����֧�֣�www.openedv.com
-//�Ա����̣�http://openedv.taobao.com
-//��ע΢�Ź���ƽ̨΢�źţ�"����ԭ��"����ѻ�ȡFPGA & STM32���ϡ�
-//��Ȩ���У�����ؾ���
-//Copyright(C) ����ԭ�� 2018-2028
-//All rights reserved
-//----------------------------------------------------------------------------------------
-// File name:           vip
-// Last modified Date:  2019/03/22 16:33:40
-// Last Version:        V1.0
-// Descriptions:        ����ͼ����ģ���װ��
-//----------------------------------------------------------------------------------------
-// Created by:          ����ԭ��
-// Created date:        2019/03/22 16:33:56
-// Version:             V1.0
-// Descriptions:        The original version
-//
-//----------------------------------------------------------------------------------------
-//****************************************************************************************//
-
 module image_process(
-    //module clock
-    input           clk            ,   // ʱ���ź�
-    input           rst_n          ,   // ��λ�źţ�����Ч��
+    // 输入时钟和复位信号
+    input           clk            ,   // 时钟信号
+    input           rst_n          ,   // 复位信号（低有效）
 
-    //ͼ����ǰ�����ݽӿ�
-    input           pre_frame_vsync,
-    input           pre_frame_hsync,
-    input           pre_frame_de   ,
-    input    [15:0] pre_rgb        ,
-    input    [10:0] xpos           ,
-    input    [10:0] ypos           ,
+    // 图像处理前的数据接口
+    input           pre_frame_vsync,  // 场同步信号
+    input           pre_frame_hsync,  // 行同步信号
+    input           pre_frame_de   ,  // 数据输入使能信号
+    input    [15:0] pre_rgb        ,  // 输入的RGB565格式图像数据
+    input    [10:0] xpos           ,  // 当前像素的水平位置
+    input    [10:0] ypos           ,  // 当前像素的垂直位置
 
-    //ͼ����������ݽӿ�
-    output          post_frame_vsync,  // ��ͬ���ź�
-    output          post_frame_hsync,  // ��ͬ���ź�
-    output          post_frame_de   ,  // ��������ʹ��
-    output   [15:0] post_rgb           // RGB565��ɫ����
+    // 图像处理后的数据接口
+    output          post_frame_vsync,  // 输出的场同步信号
+    output          post_frame_hsync,  // 输出的行同步信号
+    output          post_frame_de   ,  // 输出的数据输入使能信号
+    output   [15:0] post_rgb           // 输出的RGB565格式图像数据
 );
 
-//wire define
-//-----------------��һ����-----------------
-//RGBתYCbCr
-wire                  ycbcr_vsync;
-wire                  ycbcr_hsync;
-wire                  ycbcr_de   ;
-wire   [ 7:0]         img_y      ;
-wire   [ 7:0]         img_cb     ;
-wire   [ 7:0]         img_cr     ;
-//��ֵ��
-wire                  binarization_vsync;
-wire                  binarization_hsync;
-wire                  binarization_de   ;
-wire                  binarization_bit  ;
-//��ʴ
-wire                  erosion_vsync;
-wire                  erosion_hsync;
-wire                  erosion_de   ;
-wire                  erosion_bit  ;
-//��ֵ�˲�1
-wire                  median1_vsync;
-wire                  median1_hsync;
-wire                  median1_de   ;
-wire                  median1_bit  ;
-//Sobel��Ե���
-wire                  sobel_vsync;
-wire                  sobel_hsync;
-wire                  sobel_de   ;
-wire                  sobel_bit  ;
-//��ֵ�˲�2
-wire                  median2_vsync;
-wire                  median2_hsync;
-wire                  median2_de   ;
-wire                  median2_bit  ;
-//����
-wire                  dilation_vsync;
-wire                  dilation_hsync;
-wire                  dilation_de   ;
-wire                  dilation_bit  ;
-//ͶӰ
-wire                  projection_vsync;
-wire                  projection_hsync;
-wire                  projection_de   ;
-wire                  projection_bit  ;
-wire [9:0] max_line_up  ;//ˮƽͶӰ���
-wire [9:0] max_line_down;
-wire [9:0] max_line_left ;//��ֱͶӰ���
-wire [9:0] max_line_right;
-//�������ƵĿ���
-wire [9:0] plate_boarder_up   ;
-wire [9:0] plate_boarder_down ;
-wire [9:0] plate_boarder_left ;
-wire [9:0] plate_boarder_right;
-wire       plate_exist_flag   ;
-//-----------------�ڶ�����-----------------
-//�ַ���ֵ��
-wire                  char_bin_vsync;
-wire                  char_bin_hsync;
-wire                  char_bin_de   ;
-wire                  char_bin_bit  ;
-//��ʴ
-wire                  char_ero_vsync;
-wire                  char_ero_hsync;
-wire                  char_ero_de   ;
-wire                  char_ero_bit  ;
-//����
-wire                  char_dila_vsync;
-wire                  char_dila_hsync;
-wire                  char_dila_de   ;
-wire                  char_dila_bit  ;
-//ͶӰ
-wire char_proj_vsync;
-wire char_proj_hsync;
-wire char_proj_de   ;
-wire char_proj_bit  ;
-wire [9:0] char_line_up  ;//ˮƽͶӰ���
-wire [9:0] char_line_down;
-wire [9:0] char1_line_left ;//��ֱͶӰ���
-wire [9:0] char1_line_right;
-wire [9:0] char2_line_left ;
-wire [9:0] char2_line_right;
-wire [9:0] char3_line_left ;
-wire [9:0] char3_line_right;
-wire [9:0] char4_line_left ;
-wire [9:0] char4_line_right;
-wire [9:0] char5_line_left ;
-wire [9:0] char5_line_right;
-wire [9:0] char6_line_left ;
-wire [9:0] char6_line_right;
-wire [9:0] char7_line_left ;
-wire [9:0] char7_line_right;
-
-//-----------------��������-----------------
-//��������ֵ
-wire [39:0] char1_eigenvalue;
-wire [39:0] char2_eigenvalue;
-wire [39:0] char3_eigenvalue;
-wire [39:0] char4_eigenvalue;
-wire [39:0] char5_eigenvalue;
-wire [39:0] char6_eigenvalue;
-wire [39:0] char7_eigenvalue;
-wire        cal_eigen_vsync;
-wire        cal_eigen_hsync;
-wire        cal_eigen_de   ;
-wire        cal_eigen_bit  ;
-//ģ��ƥ��
-wire        template_vsync;
-wire        template_hsync;
-wire        template_de   ;
-wire        template_bit  ;
-wire [5:0]  match_index_char1;
-wire [5:0]  match_index_char2;
-wire [5:0]  match_index_char3;
-wire [5:0]  match_index_char4;
-wire [5:0]  match_index_char5;
-wire [5:0]  match_index_char6;
-wire [5:0]  match_index_char7;
-//���ӱ߿�
-wire           add_grid_vsync;
-wire           add_grid_href ;
-wire           add_grid_de   ;
-wire   [15:0]  add_grid_rgb  ;
-//���ս��
-wire           post_frame_vsync;
-wire           post_frame_href ;
-wire           post_frame_de   ;
-wire   [15:0]  post_rgb;
-//*****************************************************
-//**                    main code
-//*****************************************************
-
-//---------------------------��һ����-----------------------------
-//��һ���ָ�����ɫ��ʶ�����еĳ������򣬲�����߽硣
-//���ν��У�
-//  1.1 RGBתYCbCr
-//  1.2 ��ֵ��
-//  1.3 ��ʴ
-//  1.4 Sobel��Ե���
-//  1.5 ����
-//  1.6 ˮƽͶӰ&��ֱͶӰ-->������Ʊ߽�
-
-//RGBתYCbCrģ��
+//---------------------- 第一部分：车牌区域检测 ----------------------
+// 1.1 RGB 转 YCbCr
+// 将输入的RGB图像转换为YCbCr格式，方便后续处理。
+// Y: 亮度；Cb: 蓝色色度；Cr: 红色色度
 rgb2ycbcr u1_rgb2ycbcr(
-    //module clock
-    .clk             (clk    ),            // ʱ���ź�
-    .rst_n           (rst_n  ),            // ��λ�źţ�����Ч��
-    //ͼ����ǰ�����ݽӿ�
-    .pre_frame_vsync (pre_frame_vsync),    // vsync�ź�
-    .pre_frame_hsync (pre_frame_hsync),    // href�ź�
-    .pre_frame_de    (pre_frame_de   ),    // data enable�ź�
-    .img_red         (pre_rgb[15:11] ),
-    .img_green       (pre_rgb[10:5 ] ),
-    .img_blue        (pre_rgb[ 4:0 ] ),
-    //ͼ����������ݽӿ�
-    .post_frame_vsync(ycbcr_vsync),   // vsync�ź�
-    .post_frame_hsync(ycbcr_hsync),   // href�ź�
-    .post_frame_de   (ycbcr_de   ),   // data enable�ź�
-    .img_y           (img_y ),
-    .img_cb          (img_cb),
-    .img_cr          (img_cr)
+    .clk             (clk),               // 时钟信号
+    .rst_n           (rst_n),             // 复位信号
+    .pre_frame_vsync (pre_frame_vsync),   // 输入的场同步信号
+    .pre_frame_hsync (pre_frame_hsync),   // 输入的行同步信号
+    .pre_frame_de    (pre_frame_de),      // 数据输入使能信号
+    .img_red         (pre_rgb[15:11]),    // 输入的红色分量
+    .img_green       (pre_rgb[10:5]),     // 输入的绿色分量
+    .img_blue        (pre_rgb[4:0]),      // 输入的蓝色分量
+
+    .post_frame_vsync(ycbcr_vsync),       // 输出的场同步信号
+    .post_frame_hsync(ycbcr_hsync),       // 输出的行同步信号
+    .post_frame_de   (ycbcr_de),          // 输出的数据使能信号
+    .img_y           (img_y),             // 输出的Y分量（亮度）
+    .img_cb          (img_cb),            // 输出的Cb分量（蓝色色度）
+    .img_cr          (img_cr)             // 输出的Cr分量（红色色度）
 );
 
-//��ֵ��
+// 1.2 二值化
+// 使用蓝色色度Cb进行二值化，提取蓝色区域作为车牌的候选区域。
 binarization u1_binarization(
-    .clk     (clk    ),   // ʱ���ź�
-    .rst_n   (rst_n  ),   // ��λ�źţ�����Ч��
-
-	.per_frame_vsync   (ycbcr_vsync),
-	.per_frame_href    (ycbcr_hsync),	
-	.per_frame_clken   (ycbcr_de   ),
-	.per_img_Y         (img_cb     ),		
-
-	.post_frame_vsync  (binarization_vsync),	
-	.post_frame_href   (binarization_hsync),	
-	.post_frame_clken  (binarization_de   ),	
-	.post_img_Bit      (binarization_bit  ),		
-
-	.Binary_Threshold  (8'd150)//�����ֵ�����÷ǳ���Ҫ
-);
-
-//��ʴ
-VIP_Bit_Erosion_Detector # (
-    .IMG_HDISP (10'd640),    //640*480
-    .IMG_VDISP (10'd480)
-)u1_VIP_Bit_Erosion_Detector(
-    //Global Clock
-    .clk     (clk    ),   //cmos video pixel clock
-    .rst_n   (rst_n  ),   //global reset
-
-    //Image data prepred to be processd
-    .per_frame_vsync   (binarization_vsync), //Prepared Image data vsync valid signal
-    .per_frame_href    (binarization_hsync), //Prepared Image data href vaild  signal
-    .per_frame_clken   (binarization_de   ), //Prepared Image data output/capture enable clock
-    .per_img_Bit       (binarization_bit  ), //Prepared Image Bit flag outout(1: Value, 0:inValid)
+    .clk     (clk),                     // 时钟信号
+    .rst_n   (rst_n),                   // 复位信号
+    .per_frame_vsync   (ycbcr_vsync),   // YCbCr转换后的场同步信号
+    .per_frame_href    (ycbcr_hsync),   // YCbCr转换后的行同步信号
+    .per_frame_clken   (ycbcr_de),      // YCbCr转换后的数据使能信号
+    .per_img_Y         (img_cb),        // 使用蓝色色度Cb分量作为输入
     
-    //Image data has been processd
-    .post_frame_vsync  (erosion_vsync),    //Processed Image data vsync valid signal
-    .post_frame_href   (erosion_hsync),    //Processed Image data href vaild  signal
-    .post_frame_clken  (erosion_de   ),    //Processed Image data output/capture enable clock
-    .post_img_Bit      (erosion_bit  )     //Processed Image Bit flag outout(1: Value, 0:inValid)
+    .post_frame_vsync  (binarization_vsync), // 输出的场同步信号
+    .post_frame_href   (binarization_hsync), // 输出的行同步信号
+    .post_frame_clken  (binarization_de),    // 输出的数据使能信号
+    .post_img_Bit      (binarization_bit),   // 输出的二值化结果
+    .Binary_Threshold  (8'd150)             // 二值化阈值
 );
 
-////��ֵ�˲�ȥ�����
-//VIP_Gray_Median_Filter # (
-//	.IMG_HDISP(10'd640),	//640*480
-//	.IMG_VDISP(10'd480)
-//)u1_Gray_Median_Filter(
-//	//global clock
-//	.clk   (clk    ),  				//100MHz
-//	.rst_n (rst_n  ),				//global reset
+// 1.3 腐蚀
+// 腐蚀操作去除小噪点，保留较大的连通区域（如车牌区域）。
+VIP_Bit_Erosion_Detector # (
+    .IMG_HDISP (10'd640),    // 图像的水平分辨率为640
+    .IMG_VDISP (10'd480)     // 图像的垂直分辨率为480
+) u1_VIP_Bit_Erosion_Detector (
+    .clk               (clk),              // 时钟信号
+    .rst_n             (rst_n),            // 复位信号
+    .per_frame_vsync   (binarization_vsync), // 输入的场同步信号
+    .per_frame_href    (binarization_hsync), // 输入的行同步信号
+    .per_frame_clken   (binarization_de),    // 输入的数据使能信号
+    .per_img_Bit       (binarization_bit),   // 输入的二值化图像
+    .post_frame_vsync  (erosion_vsync),      // 输出的场同步信号
+    .post_frame_href   (erosion_hsync),      // 输出的行同步信号
+    .post_frame_clken  (erosion_de),         // 输出的数据使能信号
+    .post_img_Bit      (erosion_bit)         // 输出的腐蚀处理结果
+);
 
-//	//Image data prepred to be processd
-//	.per_frame_vsync   (erosion_vsync   ),	//Prepared Image data vsync valid signal
-//	.per_frame_href    (erosion_hsync   ),	//Prepared Image data href vaild  signal
-//	.per_frame_clken   (erosion_de      ),	//Prepared Image data output/capture enable clock
-//	.per_img_Y         ({8{erosion_bit}}),	//Prepared Image brightness input
-	
-//	//Image data has been processd
-//	.post_frame_vsync  (median1_vsync),	//Processed Image data vsync valid signal
-//	.post_frame_href   (median1_hsync),	//Processed Image data href vaild  signal
-//	.post_frame_clken  (median1_de   ),	//Processed Image data output/capture enable clock
-//	.post_img_Y	   	   (median1_bit  )	//Processed Image brightness input
-//);
-
-//Sobel��Ե���
-Sobel_Edge_Detector #(
-    .SOBEL_THRESHOLD   (8'd128) //Sobel ��ֵ
+// 1.4 Sobel边缘检测
+// 使用Sobel算子进行边缘检测，提取图像中的边缘信息。
+Sobel_Edge_Detector # (
+    .SOBEL_THRESHOLD   (8'd128) // Sobel边缘检测的阈值
 ) u1_Sobel_Edge_Detector (
-    //global clock
-    .clk               (clk    ),              //cmos video pixel clock
-    .rst_n             (rst_n  ),                //global reset
-    //Image data prepred to be processd
-    .per_frame_vsync  (erosion_vsync   ),    //Prepared Image data vsync valid signal
-    .per_frame_href   (erosion_hsync   ),    //Prepared Image data href vaild  signal
-    .per_frame_clken  (erosion_de      ),    //Prepared Image data output/capture enable clock
-    .per_img_y        ({8{erosion_bit}}),    //Prepared Image brightness input  
-    //Image data has been processd
-    .post_frame_vsync (sobel_vsync),    //Processed Image data vsync valid signal
-    .post_frame_href  (sobel_hsync),    //Processed Image data href vaild  signal
-    .post_frame_clken (sobel_de   ),    //Processed Image data output/capture enable clock
-    .post_img_bit     (sobel_bit  )     //Processed Image Bit flag outout(1: Value, 0 inValid)
+    .clk               (clk),              // 时钟信号
+    .rst_n             (rst_n),            // 复位信号
+    .per_frame_vsync   (erosion_vsync),    // 腐蚀处理后的场同步信号
+    .per_frame_href    (erosion_hsync),    // 腐蚀处理后的行同步信号
+    .per_frame_clken   (erosion_de),       // 腐蚀处理后的数据使能信号
+    .per_img_y         ({8{erosion_bit}}), // 输入的亮度数据（腐蚀后的二值化图像）
+    .post_frame_vsync  (sobel_vsync),      // 输出的场同步信号
+    .post_frame_href   (sobel_hsync),      // 输出的行同步信号
+    .post_frame_clken  (sobel_de),         // 输出的数据使能信号
+    .post_img_bit      (sobel_bit)         // 输出的边缘检测结果
 );
 
-//////��ֵ�˲�ȥ�����
-////VIP_Gray_Median_Filter # (
-////	.IMG_HDISP(10'd640),	//640*480
-////	.IMG_VDISP(10'd480)
-////)u2_Gray_Median_Filter(
-////	//global clock
-////	.clk   (clk    ),  				//100MHz
-////	.rst_n (rst_n  ),				//global reset
-
-////	//Image data prepred to be processd
-////	.per_frame_vsync   (sobel_vsync   ),	//Prepared Image data vsync valid signal
-////	.per_frame_href    (sobel_hsync   ),	//Prepared Image data href vaild  signal
-////	.per_frame_clken   (sobel_de      ),	//Prepared Image data output/capture enable clock
-////	.per_img_Y         ({8{sobel_bit}}),	//Prepared Image brightness input
-	
-////	//Image data has been processd
-////	.post_frame_vsync  (post_frame_vsync),	//Processed Image data vsync valid signal
-////	.post_frame_href   (post_frame_hsync),	//Processed Image data href vaild  signal
-////	.post_frame_clken  (post_frame_de   ),	//Processed Image data output/capture enable clock
-////	.post_img_Y	   	   (post_img_bit    )	//Processed Image brightness input
-////);
-
-//����
-VIP_Bit_Dilation_Detector#(
-	.IMG_HDISP(10'd640),	//640*480
-	.IMG_VDISP(10'd480)
-)u1_VIP_Bit_Dilation_Detector(
-	//global clock
-	.clk   (clk    ),  				//cmos video pixel clock
-	.rst_n (rst_n  ),				//global reset
-
-	//Image data prepred to be processd
-	.per_frame_vsync   (sobel_vsync   ),	//Prepared Image data vsync valid signal
-	.per_frame_href    (sobel_hsync   ),	//Prepared Image data href vaild  signal
-	.per_frame_clken   (sobel_de      ),	//Prepared Image data output/capture enable clock
-	.per_img_Bit       (sobel_bit     ),	//Prepared Image Bit flag outout(1: Value, 0:inValid)
-	
-	//Image data has been processd
-	.post_frame_vsync  (dilation_vsync),	//Processed Image data vsync valid signal
-	.post_frame_href   (dilation_hsync),	//Processed Image data href vaild  signal
-	.post_frame_clken  (dilation_de   ),	//Processed Image data output/capture enable clock
-	.post_img_Bit  	   (dilation_bit  )   //Processed Image Bit flag outout(1: Value, 0:inValid)
+// 1.5 膨胀
+// 膨胀操作增强车牌区域，填补边缘的空白部分。
+VIP_Bit_Dilation_Detector # (
+    .IMG_HDISP(10'd640),    // 图像的水平分辨率为640
+    .IMG_VDISP(10'd480)     // 图像的垂直分辨率为480
+) u1_VIP_Bit_Dilation_Detector (
+    .clk               (clk),              // 时钟信号
+    .rst_n             (rst_n),            // 复位信号
+    .per_frame_vsync   (sobel_vsync),      // Sobel边缘检测后的场同步信号
+    .per_frame_href    (sobel_hsync),      // Sobel边缘检测后的行同步信号
+    .per_frame_clken   (sobel_de),         // Sobel边缘检测后的数据使能信号
+    .per_img_Bit       (sobel_bit),        // 输入的边缘检测图像
+    .post_frame_vsync  (dilation_vsync),   // 输出的场同步信号
+    .post_frame_href   (dilation_hsync),   // 输出的行同步信号
+    .post_frame_clken  (dilation_de),      // 输出的数据使能信号
+    .post_img_Bit      (dilation_bit)      // 输出的膨胀处理结果
 );
 
-//ˮƽͶӰ
+//
+// 1.6 水平投影 & 垂直投影
+// 利用水平和垂直投影方法来确定车牌的边界。
+// 水平投影用于检测车牌的上下边界，垂直投影用于检测左右边界。
+
+// 水平投影
 VIP_horizon_projection # (
-	.IMG_HDISP(10'd640),	//640*480
-	.IMG_VDISP(10'd480)
-)u1_VIP_horizon_projection(
-	//global clock
-	.clk   (clk    ),  				//cmos video pixel clock
-	.rst_n (rst_n  ),				//global reset
-
-	//Image data prepred to be processd
-	.per_frame_vsync   (dilation_vsync),//Prepared Image data vsync valid signal
-	.per_frame_href    (dilation_hsync),//Prepared Image data href vaild  signal
-	.per_frame_clken   (dilation_de   ),//Prepared Image data output/capture enable clock
-	.per_img_Bit       (dilation_bit  ),//Prepared Image Bit flag outout(1: Value, 0:inValid)
-	
-	//Image data has been processd
-	.post_frame_vsync  (projection_vsync),//Processed Image data vsync valid signal
-	.post_frame_href   (projection_hsync),//Processed Image data href vaild  signal
-	.post_frame_clken  (projection_de   ),//Processed Image data output/capture enable clock
-	.post_img_Bit      (projection_bit  ),//Processed Image Bit flag outout(1: Value, 0:inValid)
-
-    .max_line_up  (max_line_up  ),//��������
-    .max_line_down(max_line_down),
-	
-    .horizon_start  (10'd10 ),//ͶӰ��ʼ��
-    .horizon_end    (10'd630) //ͶӰ������  
+    .IMG_HDISP(10'd640),    // 图像的水平分辨率为640
+    .IMG_VDISP(10'd480)     // 图像的垂直分辨率为480
+) u1_VIP_horizon_projection (
+    .clk               (clk),               // 时钟信号
+    .rst_n             (rst_n),             // 复位信号
+    .per_frame_vsync   (dilation_vsync),    // 膨胀处理后的场同步信号
+    .per_frame_href    (dilation_hsync),    // 膨胀处理后的行同步信号
+    .per_frame_clken   (dilation_de),       // 膨胀处理后的数据使能信号
+    .per_img_Bit       (dilation_bit),      // 膨胀处理后的二值化图像
+    .post_frame_vsync  (projection_vsync),  // 输出的场同步信号
+    .post_frame_href   (projection_hsync),  // 输出的行同步信号
+    .post_frame_clken  (projection_de),     // 输出的数据使能信号
+    .post_img_Bit      (projection_bit),    // 投影处理结果
+    .max_line_up       (max_line_up),       // 水平投影结果的上边界
+    .max_line_down     (max_line_down),     // 水平投影结果的下边界
+    .horizon_start     (10'd10),            // 投影起始列
+    .horizon_end       (10'd630)            // 投影结束列
 );
 
-//��ֱͶӰ
+// 垂直投影
 VIP_vertical_projection # (
-	.IMG_HDISP(10'd640),	//640*480
-	.IMG_VDISP(10'd480)
-)u1_VIP_vertical_projection(
-	//global clock
-	.clk   (clk    ),//cmos video pixel clock
-	.rst_n (rst_n  ),//global reset
-
-	//Image data prepred to be processd
-	.per_frame_vsync   (dilation_vsync),//Prepared Image data vsync valid signal
-	.per_frame_href    (dilation_hsync),//Prepared Image data href vaild  signal
-	.per_frame_clken   (dilation_de   ),//Prepared Image data output/capture enable clock
-	.per_img_Bit       (dilation_bit  ),//Prepared Image Bit flag outout(1: Value, 0:inValid)
-	
-	//Image data has been processd
-	.post_frame_vsync  (),//Processed Image data vsync valid signal
-	.post_frame_href   (),//Processed Image data href vaild  signal
-	.post_frame_clken  (),//Processed Image data output/capture enable clock
-	.post_img_Bit      (),//Processed Image Bit flag outout(1: Value, 0:inValid)
-
-    .max_line_left (max_line_left ),		//��������
-    .max_line_right(max_line_right),
-	
-    .vertical_start(10'd10 ),//ͶӰ��ʼ��
-    .vertical_end  (10'd470) //ͶӰ������	     
+    .IMG_HDISP(10'd640),    // 图像的水平分辨率为640
+    .IMG_VDISP(10'd480)     // 图像的垂直分辨率为480
+) u1_VIP_vertical_projection (
+    .clk               (clk),               // 时钟信号
+    .rst_n             (rst_n),             // 复位信号
+    .per_frame_vsync   (dilation_vsync),    // 膨胀处理后的场同步信号
+    .per_frame_href    (dilation_hsync),    // 膨胀处理后的行同步信号
+    .per_frame_clken   (dilation_de),       // 膨胀处理后的数据使能信号
+    .per_img_Bit       (dilation_bit),      // 膨胀处理后的二值化图像
+    .max_line_left     (max_line_left),     // 垂直投影结果的左边界
+    .max_line_right    (max_line_right),    // 垂直投影结果的右边界
+    .vertical_start    (10'd10),            // 投影起始行
+    .vertical_end      (10'd470)            // 投影结束行
 );
 
-////�������Ƶı߿򣬵�����������ַ�
-//plate_boarder_adjust u_plate_boarder_adjust(
-//    //global clock
-//    .clk   (clk    ),                  
-//    .rst_n (rst_n  ),                
+//---------------------- 第二部分：字符区域检测 ----------------------
+// 第二部分用于检测车牌内每个字符的区域，依次进行二值化、腐蚀、膨胀，以及水平和垂直投影。
 
-//    .per_frame_vsync (post_frame_vsync),    
-
-//    .max_line_up     (max_line_up   ), //����ĳ��ƺ�ѡ����
-//    .max_line_down   (max_line_down ),
-//    .max_line_left   (max_line_left ),     
-//    .max_line_right  (max_line_right),
-    
-//    .plate_boarder_up     (plate_boarder_up   ), //������ı߿�
-//    .plate_boarder_down   (plate_boarder_down ), 
-//    .plate_boarder_left   (plate_boarder_left ),
-//    .plate_boarder_right  (plate_boarder_right),
-//    .plate_exist_flag     (plate_exist_flag   )  //��������ı߿���߱ȣ��ж��Ƿ���ڳ���    
-//);
-//----------------------------------------------------------------
-
-
-//---------------------------�ڶ�����-----------------------------
-//�ڶ��������õ�һ������ȡ�ĳ��Ʊ߽磬��ȡ�߽���ÿ���ַ�������
-//���ν��У�
-//  2.1 ��ֵ��
-//  2.2 ��ʴ
-//  2.3 ����
-//  2.4 ˮƽͶӰ&��ֱͶӰ-->��������ַ��ı߽�
-
-//2.1 �ڳ��Ʊ߽��ڣ���RGB�е�R���ж�ֵ�������Ʊ߽��ⲻ����
+// 2.1 字符二值化
+// 在车牌边界内，对RGB中的红色分量进行二值化，车牌边界外的区域不处理。
 char_binarization # (
-    .BIN_THRESHOLD   (8'd160    ) //��ֵ����ֵ
-)u2_char_binarization(
-    .clk             (clk       ),   // ʱ���ź�
-    .rst_n           (rst_n     ),   // ��λ�źţ�����Ч��
-    //������Ƶ��
-	.per_frame_vsync(pre_frame_vsync),
-	.per_frame_href (pre_frame_hsync),	
-	.per_frame_clken(pre_frame_de   ),
-	.per_frame_Red  ({pre_rgb[15:11],3'b111} ),
-    //���Ʊ߽�
-    .plate_boarder_up 	 (max_line_up   +10'd10),//����ĳ��ƺ�ѡ����
-    .plate_boarder_down  (max_line_down -10'd10),
-    .plate_boarder_left  (max_line_left +10'd10),   
-    .plate_boarder_right (max_line_right-10'd10),
-    .plate_exist_flag    (1'b1   ),
-    //�����Ƶ��
-	.post_frame_vsync(char_bin_vsync),	
-	.post_frame_href (char_bin_hsync),	
-	.post_frame_clken(char_bin_de   ),	
-	.post_frame_Bit  (char_bin_bit  )
+    .BIN_THRESHOLD   (8'd160)  // 二值化的阈值
+) u2_char_binarization (
+    .clk               (clk),                     // 时钟信号
+    .rst_n             (rst_n),                   // 复位信号
+    .per_frame_vsync   (pre_frame_vsync),         // 输入的场同步信号
+    .per_frame_href    (pre_frame_hsync),         // 输入的行同步信号
+    .per_frame_clken   (pre_frame_de),            // 输入的数据使能信号
+    .per_frame_Red     ({pre_rgb[15:11], 3'b111}),// 提取输入的红色分量
+    .plate_boarder_up  (max_line_up + 10'd10),    // 车牌上边界（加偏移）
+    .plate_boarder_down(max_line_down - 10'd10),  // 车牌下边界（减偏移）
+    .plate_boarder_left(max_line_left + 10'd10),  // 车牌左边界（加偏移）
+    .plate_boarder_right(max_line_right - 10'd10),// 车牌右边界（减偏移）
+    .plate_exist_flag  (1'b1),                    // 表示车牌存在
+    .post_frame_vsync  (char_bin_vsync),          // 输出的场同步信号
+    .post_frame_href   (char_bin_hsync),          // 输出的行同步信号
+    .post_frame_clken  (char_bin_de),             // 输出的数据使能信号
+    .post_frame_Bit    (char_bin_bit)             // 输出的二值化结果
 );
 
-//2.2 ��ʴ
+// 2.2 字符腐蚀
+// 通过腐蚀去除字符中的小噪声区域。
 VIP_Bit_Erosion_Detector # (
-    .IMG_HDISP (10'd640),    //640*480
-    .IMG_VDISP (10'd480)
-)u2_VIP_Bit_Erosion_Detector(
-    //Global Clock
-    .clk     (clk    ),   //cmos video pixel clock
-    .rst_n   (rst_n  ),   //global reset
-
-    //Image data prepred to be processd
-    .per_frame_vsync   (char_bin_vsync), //Prepared Image data vsync valid signal
-    .per_frame_href    (char_bin_hsync), //Prepared Image data href vaild  signal
-    .per_frame_clken   (char_bin_de   ), //Prepared Image data output/capture enable clock
-    .per_img_Bit       (char_bin_bit  ), //Prepared Image Bit flag outout(1: Value, 0:inValid)
-    
-    //Image data has been processd
-    .post_frame_vsync  (char_ero_vsync),    //Processed Image data vsync valid signal
-    .post_frame_href   (char_ero_hsync),    //Processed Image data href vaild  signal
-    .post_frame_clken  (char_ero_de   ),    //Processed Image data output/capture enable clock
-    .post_img_Bit      (char_ero_bit  )     //Processed Image Bit flag outout(1: Value, 0:inValid)
+    .IMG_HDISP(10'd640),    // 图像的水平分辨率为640
+    .IMG_VDISP(10'd480)     // 图像的垂直分辨率为480
+) u2_VIP_Bit_Erosion_Detector (
+    .clk               (clk),                // 时钟信号
+    .rst_n             (rst_n),              // 复位信号
+    .per_frame_vsync   (char_bin_vsync),     // 字符二值化后的场同步信号
+    .per_frame_href    (char_bin_hsync),     // 字符二值化后的行同步信号
+    .per_frame_clken   (char_bin_de),        // 字符二值化后的数据使能信号
+    .per_img_Bit       (char_bin_bit),       // 字符二值化后的图像数据
+    .post_frame_vsync  (char_ero_vsync),     // 输出的场同步信号
+    .post_frame_href   (char_ero_hsync),     // 输出的行同步信号
+    .post_frame_clken  (char_ero_de),        // 输出的数据使能信号
+    .post_img_Bit      (char_ero_bit)        // 输出的腐蚀结果
 );
 
-//2.3 ����
-VIP_Bit_Dilation_Detector#(
-	.IMG_HDISP(10'd640),	//640*480
-	.IMG_VDISP(10'd480)
-)u2_VIP_Bit_Dilation_Detector(
-	//global clock
-	.clk   (clk    ),  				//cmos video pixel clock
-	.rst_n (rst_n  ),				//global reset
-
-	//Image data prepred to be processd
-	.per_frame_vsync   (char_ero_vsync ),	//Prepared Image data vsync valid signal
-	.per_frame_href    (char_ero_hsync ),	//Prepared Image data href vaild  signal
-	.per_frame_clken   (char_ero_de    ),	//Prepared Image data output/capture enable clock
-	.per_img_Bit       (char_ero_bit   ),	//Prepared Image Bit flag outout(1: Value, 0:inValid)
-	
-	//Image data has been processd
-	.post_frame_vsync  (char_dila_vsync),	//Processed Image data vsync valid signal
-	.post_frame_href   (char_dila_hsync),	//Processed Image data href vaild  signal
-	.post_frame_clken  (char_dila_de   ),	//Processed Image data output/capture enable clock
-	.post_img_Bit  	   (char_dila_bit  )   //Processed Image Bit flag outout(1: Value, 0:inValid)
+// 2.3 字符膨胀
+// 膨胀操作用于增强字符的结构，填补字符内部的空隙。
+VIP_Bit_Dilation_Detector # (
+    .IMG_HDISP(10'd640),    // 图像的水平分辨率为640
+    .IMG_VDISP(10'd480)     // 图像的垂直分辨率为480
+) u2_VIP_Bit_Dilation_Detector (
+    .clk               (clk),               // 时钟信号
+    .rst_n             (rst_n),             // 复位信号
+    .per_frame_vsync   (char_ero_vsync),    // 字符腐蚀后的场同步信号
+    .per_frame_href    (char_ero_hsync),    // 字符腐蚀后的行同步信号
+    .per_frame_clken   (char_ero_de),       // 字符腐蚀后的数据使能信号
+    .per_img_Bit       (char_ero_bit),      // 字符腐蚀后的图像数据
+    .post_frame_vsync  (char_dila_vsync),   // 输出的场同步信号
+    .post_frame_href   (char_dila_hsync),   // 输出的行同步信号
+    .post_frame_clken  (char_dila_de),      // 输出的数据使能信号
+    .post_img_Bit      (char_dila_bit)      // 输出的膨胀结果
 );
 
-
-//2.4.1 �ַ������ˮƽͶӰ
+// 2.4 字符水平和垂直投影
+// 通过水平投影和垂直投影确定字符的上、下、左、右边界。
 char_horizon_projection # (
-	.IMG_HDISP(10'd640),	//640*480
-	.IMG_VDISP(10'd480)
-)u2_char_horizon_projection(
-	//global clock
-	.clk   (clk         ),  			//cmos video pixel clock
-	.rst_n (rst_n       ),				//global reset
-
-	//Image data prepred to be processd
-	.per_frame_vsync   (char_dila_vsync),//Prepared Image data vsync valid signal
-	.per_frame_href    (char_dila_hsync),//Prepared Image data href vaild  signal
-	.per_frame_clken   (char_dila_de   ),//Prepared Image data output/capture enable clock
-	.per_img_Bit       (char_dila_bit  ),//Prepared Image Bit flag outout(1: Value, 0:inValid)
-	
-	//Image data has been processd
-	.post_frame_vsync  (char_proj_vsync),//Processed Image data vsync valid signal
-	.post_frame_href   (char_proj_hsync),//Processed Image data href vaild  signal
-	.post_frame_clken  (char_proj_de   ),//Processed Image data output/capture enable clock
-	.post_img_Bit      (char_proj_bit   ),//Processed Image Bit flag outout(1: Value, 0:inValid)
-
-    .max_line_up    (char_line_up  ),//��������
-    .max_line_down  (char_line_down),
-	
-    .horizon_start  (10'd10 ),//ͶӰ��ʼ��
-    .horizon_end    (10'd630) //ͶӰ������  
+    .IMG_HDISP(10'd640),    // 图像的水平分辨率为640
+    .IMG_VDISP(10'd480)     // 图像的垂直分辨率为480
+) u2_char_horizon_projection (
+    .clk               (clk),               // 时钟信号
+    .rst_n             (rst_n),             // 复位信号
+    .per_frame_vsync   (char_dila_vsync),   // 字符膨胀后的场同步信号
+    .per_frame_href    (char_dila_hsync),   // 字符膨胀后的行同步信号
+    .per_frame_clken   (char_dila_de),      // 字符膨
+    .per_img_Bit       (char_dila_bit),      // 字符膨胀后的二值化图像数据
+    .post_frame_vsync  (char_proj_vsync),    // 输出的场同步信号
+    .post_frame_href   (char_proj_hsync),    // 输出的行同步信号
+    .post_frame_clken  (char_proj_de),       // 输出的数据使能信号
+    .post_img_Bit      (char_proj_bit),      // 输出的水平投影结果
+    .max_line_up       (char_line_up),       // 水平投影确定的上边界
+    .max_line_down     (char_line_down),     // 水平投影确定的下边界
+    .horizon_start     (10'd10),             // 水平投影的起始列
+    .horizon_end       (10'd630)             // 水平投影的结束列
 );
 
-
-//2.4.2 �ַ�����Ĵ�ֱͶӰ
+// 2.4.2 字符垂直投影
+// 垂直投影用于确定每个字符的左右边界。
 char_vertical_projection # (
-	.IMG_HDISP(10'd640),	//640*480
-	.IMG_VDISP(10'd480)
-)u2_char_vertical_projection(
-	//global clock
-	.clk   (clk    ),//cmos video pixel clock
-	.rst_n (rst_n  ),//global reset
-	//Image data prepred to be processd
-	.per_frame_vsync   (char_dila_vsync),//Prepared Image data vsync valid signal
-	.per_frame_href    (char_dila_hsync),//Prepared Image data href vaild  signal
-	.per_frame_clken   (char_dila_de   ),//Prepared Image data output/capture enable clock
-	.per_img_Bit       (char_dila_bit  ),//Prepared Image Bit flag outout(1: Value, 0:inValid)
-	//���ؼ�ⷶΧ
-	.vertical_start  (10'd10 ),//ͶӰ��ʼ��
-    .vertical_end    (10'd630),//ͶӰ������    
-    //�����������
-	.char1_line_left   (char1_line_left ),
-    .char1_line_right  (char1_line_right),
-    .char2_line_left   (char2_line_left ),
-    .char2_line_right  (char2_line_right),
-    .char3_line_left   (char3_line_left ),
-    .char3_line_right  (char3_line_right),
-    .char4_line_left   (char4_line_left ),
-    .char4_line_right  (char4_line_right),
-    .char5_line_left   (char5_line_left ),
-    .char5_line_right  (char5_line_right),
-    .char6_line_left   (char6_line_left ),
-    .char6_line_right  (char6_line_right),
-    .char7_line_left   (char7_line_left ),
-    .char7_line_right  (char7_line_right),
-	//Image data has been processd
-	.post_frame_vsync  (),//Processed Image data vsync valid signal
-	.post_frame_href   (),//Processed Image data href vaild  signal
-	.post_frame_clken  (),//Processed Image data output/capture enable clock
-	.post_img_Bit      () //Processed Image Bit flag outout(1: Value, 0:inValid)   
+    .IMG_HDISP(10'd640),    // 图像的水平分辨率为640
+    .IMG_VDISP(10'd480)     // 图像的垂直分辨率为480
+) u2_char_vertical_projection (
+    .clk               (clk),                 // 时钟信号
+    .rst_n             (rst_n),               // 复位信号
+    .per_frame_vsync   (char_dila_vsync),     // 字符膨胀后的场同步信号
+    .per_frame_href    (char_dila_hsync),     // 字符膨胀后的行同步信号
+    .per_frame_clken   (char_dila_de),        // 字符膨胀后的数据使能信号
+    .per_img_Bit       (char_dila_bit),       // 字符膨胀后的图像数据
+    .vertical_start    (10'd10),              // 垂直投影的起始行
+    .vertical_end      (10'd630),             // 垂直投影的结束行
+    // 输出每个字符的左右边界
+    .char1_line_left   (char1_line_left),     // 第1个字符的左边界
+    .char1_line_right  (char1_line_right),    // 第1个字符的右边界
+    .char2_line_left   (char2_line_left),     // 第2个字符的左边界
+    .char2_line_right  (char2_line_right),    // 第2个字符的右边界
+    .char3_line_left   (char3_line_left),     // 第3个字符的左边界
+    .char3_line_right  (char3_line_right),    // 第3个字符的右边界
+    .char4_line_left   (char4_line_left),     // 第4个字符的左边界
+    .char4_line_right  (char4_line_right),    // 第4个字符的右边界
+    .char5_line_left   (char5_line_left),     // 第5个字符的左边界
+    .char5_line_right  (char5_line_right),    // 第5个字符的右边界
+    .char6_line_left   (char6_line_left),     // 第6个字符的左边界
+    .char6_line_right  (char6_line_right),    // 第6个字符的右边界
+    .char7_line_left   (char7_line_left),     // 第7个字符的左边界
+    .char7_line_right  (char7_line_right)     // 第7个字符的右边界
 );
 
-//----------------------------------------------------------------
+//---------------------- 第三部分：字符识别 ----------------------
+// 第三部分进行模板匹配识别每个字符，并添加边框和显示字符。
 
-
-//---------------------------��������-----------------------------
-//�������ָ��ݵڶ����ָ�����ÿ���ַ��ı߽磬����ģ��ƥ�䡣
-//���ν��У�
-//  3.1 ��ȡ����ֵ
-//  3.2 ģ��ƥ��
-//  3.3 ���ӱ߿�
-//  3.4 �����ַ�
-
-// 3.1 ��ȡ����ֵ
-Get_EigenValue#(
-    .HOR_SPLIT(8), //ˮƽ�и�ɼ�������
-    .VER_SPLIT(5)  //��ֱ�и�ɼ�������
-)u3_Get_EigenValue(
-    //ʱ�Ӽ���λ
-    .clk             (clk     ),   // ʱ���ź�
-    .rst_n           (rst_n   ),   // ��λ�źţ�����Ч��
-    //������Ƶ��
-    .per_frame_vsync     (char_dila_vsync    ),//char_dila_vsync
-    .per_frame_href      (char_dila_hsync    ),//char_dila_hsync
-    .per_frame_clken     (char_dila_de       ),//char_dila_de   
-    .per_frame_bit       (char_dila_bit      ),//char_dila_bit  
-    //�����ַ��߽�
-    .char_line_up 	     (char_line_up       ),
-    .char_line_down      (char_line_down     ),
-    .char1_line_left     (char1_line_left    ),
-    .char1_line_right    (char1_line_right   ),
-    .char2_line_left     (char2_line_left    ),
-    .char2_line_right    (char2_line_right   ),
-    .char3_line_left     (char3_line_left    ),
-    .char3_line_right    (char3_line_right   ),
-    .char4_line_left     (char4_line_left    ),
-    .char4_line_right    (char4_line_right   ),
-    .char5_line_left     (char5_line_left    ),
-    .char5_line_right    (char5_line_right   ),
-    .char6_line_left     (char6_line_left    ),
-    .char6_line_right    (char6_line_right   ),
-    .char7_line_left     (char7_line_left    ),
-    .char7_line_right    (char7_line_right   ),
-    //�����Ƶ��
-	.post_frame_vsync    (cal_eigen_vsync    ),	
-	.post_frame_href     (cal_eigen_hsync    ),	
-	.post_frame_clken    (cal_eigen_de       ),	
-	.post_frame_bit      (cal_eigen_bit      ),
-    //���7������ֵ
-    .char1_eigenvalue    (char1_eigenvalue   ),
-    .char2_eigenvalue    (char2_eigenvalue   ),
-    .char3_eigenvalue    (char3_eigenvalue   ),
-    .char4_eigenvalue    (char4_eigenvalue   ),
-    .char5_eigenvalue    (char5_eigenvalue   ),
-    .char6_eigenvalue    (char6_eigenvalue   ),
-    .char7_eigenvalue    (char7_eigenvalue   ) 
+// 3.1 提取特征值
+// 将字符图像分割为若干个区域，提取每个字符的特征值。
+Get_EigenValue # (
+    .HOR_SPLIT(8),  // 水平切割成8个区域
+    .VER_SPLIT(5)   // 垂直切割成5个区域
+) u3_Get_EigenValue (
+    .clk               (clk),                 // 时钟信号
+    .rst_n             (rst_n),               // 复位信号
+    .per_frame_vsync   (char_dila_vsync),     // 输入的场同步信号
+    .per_frame_href    (char_dila_hsync),     // 输入的行同步信号
+    .per_frame_clken   (char_dila_de),        // 输入的数据使能信号
+    .per_frame_bit     (char_dila_bit),       // 输入的字符膨胀后的图像
+    // 字符的边界
+    .char_line_up      (char_line_up),        // 字符的上边界
+    .char_line_down    (char_line_down),      // 字符的下边界
+    .char1_line_left   (char1_line_left),     // 第1个字符的左边界
+    .char1_line_right  (char1_line_right),    // 第1个字符的右边界
+    .char2_line_left   (char2_line_left),     // 第2个字符的左边界
+    .char2_line_right  (char2_line_right),    // 第2个字符的右边界
+    .char3_line_left   (char3_line_left),     // 第3个字符的左边界
+    .char3_line_right  (char3_line_right),    // 第3个字符的右边界
+    .char4_line_left   (char4_line_left),     // 第4个字符的左边界
+    .char4_line_right  (char4_line_right),    // 第4个字符的右边界
+    .char5_line_left   (char5_line_left),     // 第5个字符的左边界
+    .char5_line_right  (char5_line_right),    // 第5个字符的右边界
+    .char6_line_left   (char6_line_left),     // 第6个字符的左边界
+    .char6_line_right  (char6_line_right),    // 第6个字符的右边界
+    .char7_line_left   (char7_line_left),     // 第7个字符的左边界
+    .char7_line_right  (char7_line_right),    // 第7个字符的右边界
+    // 输出特征值
+    .char1_eigenvalue  (char1_eigenvalue),    // 第1个字符的特征值
+    .char2_eigenvalue  (char2_eigenvalue),    // 第2个字符的特征值
+    .char3_eigenvalue  (char3_eigenvalue),    // 第3个字符的特征值
+    .char4_eigenvalue  (char4_eigenvalue),    // 第4个字符的特征值
+    .char5_eigenvalue  (char5_eigenvalue),    // 第5个字符的特征值
+    .char6_eigenvalue  (char6_eigenvalue),    // 第6个字符的特征值
+    .char7_eigenvalue  (char7_eigenvalue)     // 第7个字符的特征值
 );
 
-//3.2 ͬ��ģ��ƥ��
-template_matching#(
-    .HOR_SPLIT(8), //ˮƽ�и�ɼ�������
-    .VER_SPLIT(5)  //��ֱ�и�ɼ�������
-)u3_template_matching(
-    //ʱ�Ӽ���λ
-    .clk             (clk     ),   // ʱ���ź�
-    .rst_n           (rst_n   ),   // ��λ�źţ�����Ч��
-    //������Ƶ��
-    .per_frame_vsync     (cal_eigen_vsync),
-    .per_frame_href      (cal_eigen_hsync),
-    .per_frame_clken     (cal_eigen_de   ),
-    .per_frame_bit       (cal_eigen_bit  ),
-    //���Ʊ߽�
-    .plate_boarder_up    (max_line_up   ),
-    .plate_boarder_down  (max_line_down ),
-    .plate_boarder_left  (max_line_left ),   
-    .plate_boarder_right (max_line_right),
-    .plate_exist_flag    (1'b1  ),        
-    //����7���ַ�������ֵ
-    .char1_eigenvalue  (char1_eigenvalue),
-    .char2_eigenvalue  (char2_eigenvalue),
-    .char3_eigenvalue  (char3_eigenvalue),
-    .char4_eigenvalue  (char4_eigenvalue),
-    .char5_eigenvalue  (char5_eigenvalue),
-    .char6_eigenvalue  (char6_eigenvalue),
-    .char7_eigenvalue  (char7_eigenvalue),
-    //�����Ƶ��
-    .post_frame_vsync  (template_vsync  ), 
-    .post_frame_href   (template_hsync  ), 
-    .post_frame_clken  (template_de     ), 
-    .post_frame_bit    (template_bit    ), 
-    //���ģ��ƥ����
-    .match_index_char1 (match_index_char1),//ƥ�����ַ�1���
-    .match_index_char2 (match_index_char2),//ƥ�����ַ�2���
-    .match_index_char3 (match_index_char3),//ƥ�����ַ�3���
-    .match_index_char4 (match_index_char4),//ƥ�����ַ�4���
-    .match_index_char5 (match_index_char5),//ƥ�����ַ�5���
-    .match_index_char6 (match_index_char6),//ƥ�����ַ�6���
-    .match_index_char7 (match_index_char7) //ƥ�����ַ�7���
+// 3.2 模板匹配
+// 通过模板匹配识别每个字符。
+template_matching # (
+    .HOR_SPLIT(8),  // 水平切割成8个区域
+    .VER_SPLIT(5)   // 垂直切割成5个区域
+) u3_template_matching (
+    .clk               (clk),                 // 时钟信号
+    .rst_n             (rst_n),               // 复位信号
+    .per_frame_vsync   (cal_eigen_vsync),     // 特征值计算后的场同步信号
+    .per_frame_href    (cal_eigen_hsync),     // 特征值计算后的行同步信号
+    .per_frame_clken   (cal_eigen_de),        // 特征值计算后的数据使能信号
+    .per_frame_bit     (cal_eigen_bit),       // 特征值计算后的图像数据
+    .plate_boarder_up  (max_line_up),         // 车牌的上边界
+    .plate_boarder_down(max_line_down),       // 车牌的下边界
+    .plate_boarder_left(max_line_left),       // 车牌的左边界
+    .plate_boarder_right(max_line_right),     // 车牌的右边界
+    .plate_exist_flag  (1'b1),                // 表示车牌存在
+    // 输入特征值
+    .char1_eigenvalue  (char1_eigenvalue),    // 第1个字符的特征值
+    .char2_eigenvalue  (char2_eigenvalue),    // 第2个字符的特征值
+    .char3_eigenvalue  (char3_eigenvalue),    // 第3个字符的特征值
+    .char4_eigenvalue  (char
+    .char4_eigenvalue  (char4_eigenvalue),    // 第4个字符的特征值
+    .char5_eigenvalue  (char5_eigenvalue),    // 第5个字符的特征值
+    .char6_eigenvalue  (char6_eigenvalue),    // 第6个字符的特征值
+    .char7_eigenvalue  (char7_eigenvalue),    // 第7个字符的特征值
+    // 输出识别结果
+    .match_index_char1 (match_index_char1),   // 第1个字符匹配结果
+    .match_index_char2 (match_index_char2),   // 第2个字符匹配结果
+    .match_index_char3 (match_index_char3),   // 第3个字符匹配结果
+    .match_index_char4 (match_index_char4),   // 第4个字符匹配结果
+    .match_index_char5 (match_index_char5),   // 第5个字符匹配结果
+    .match_index_char6 (match_index_char6),   // 第6个字符匹配结果
+    .match_index_char7 (match_index_char7)    // 第7个字符匹配结果
 );
 
-//ila_eigenvalue u_ila_eigenvalue (
-//	.clk(clk), // input wire clk
-//	.probe0 (match_index_char1), // input wire [5:0]  probe0  
-//	.probe1 (match_index_char2), // input wire [5:0]  probe1 
-//	.probe2 (match_index_char3), // input wire [5:0]  probe2 
-//	.probe3 (match_index_char4), // input wire [5:0]  probe3 
-//	.probe4 (match_index_char5), // input wire [5:0]  probe4 
-//	.probe5 (match_index_char6), // input wire [5:0]  probe5 
-//	.probe6 (match_index_char7), // input wire [5:0]  probe6
-//	.probe7 (char1_eigenvalue ), // input wire [39:0]  probe7 
-//	.probe8 (char2_eigenvalue ), // input wire [39:0]  probe8 
-//	.probe9 (char3_eigenvalue ), // input wire [39:0]  probe9 
-//	.probe10(char4_eigenvalue ), // input wire [39:0]  probe10 
-//	.probe11(char5_eigenvalue ), // input wire [39:0]  probe11 
-//	.probe12(char6_eigenvalue ), // input wire [39:0]  probe12 
-//	.probe13(char7_eigenvalue )  // input wire [39:0]  probe13
-//);
+//---------------------- 第四部分：显示和边框添加 ----------------------
+// 将识别出的字符边框和车牌区域边框添加到图像中。
 
-//�����Ʊ߿��ַ��߿����ӵ�ͼ����
+// 4.1 添加车牌和字符的边框
 add_grid # (
-	.PLATE_WIDTH(10'd5),
-	.CHAR_WIDTH (10'd2)
-)u4_add_grid(
-    .clk             (clk   ),   // ʱ���ź�
-    .rst_n           (rst_n ),   // ��λ�źţ�����Ч��
-    //������Ƶ��
-	.per_frame_vsync     (pre_frame_vsync),//char_dila_vsync     //pre_frame_vsync
-	.per_frame_href      (pre_frame_hsync),//char_dila_hsync     //pre_frame_hsync	
-	.per_frame_clken     (pre_frame_de   ),//char_dila_de        //pre_frame_de   
-	.per_frame_rgb       (pre_rgb        ),//{16{char_dila_bit}} //pre_rgb        		
-    //���Ʊ߽�
-    .plate_boarder_up 	 (max_line_up   ),//(10'd200),
-    .plate_boarder_down	 (max_line_down ),//(10'd300),
-    .plate_boarder_left  (max_line_left ),//(10'd200),   
-    .plate_boarder_right (max_line_right),//(10'd500),
-    .plate_exist_flag    (1'b1  ),        //(1'b1   ),
-    //�ַ��߽�
-    .char_line_up 	      (char_line_up    ),//(10'd210),
-    .char_line_down	      (char_line_down  ),//(10'd290),
-    .char1_line_left      (char1_line_left ),//(10'd210),
-    .char1_line_right     (char1_line_right),//(10'd230),
-    .char2_line_left      (char2_line_left ),//(10'd250),
-    .char2_line_right     (char2_line_right),//(10'd270),
-    .char3_line_left      (char3_line_left ),//(10'd290),
-    .char3_line_right     (char3_line_right),//(10'd310),
-    .char4_line_left      (char4_line_left ),//(10'd330),
-    .char4_line_right     (char4_line_right),//(10'd350),
-    .char5_line_left      (char5_line_left ),//(10'd370),
-    .char5_line_right     (char5_line_right),//(10'd390),
-    .char6_line_left      (char6_line_left ),//(10'd410),
-    .char6_line_right     (char6_line_right),//(10'd430),
-    .char7_line_left      (char7_line_left ),//(10'd450),
-    .char7_line_right     (char7_line_right),//(10'd470),
-    //�����Ƶ��
-	.post_frame_vsync     (add_grid_vsync),	
-	.post_frame_href      (add_grid_href ),	
-	.post_frame_clken     (add_grid_de   ),	
-	.post_frame_rgb       (add_grid_rgb  )
+    .PLATE_WIDTH(10'd5),    // 车牌边框的宽度
+    .CHAR_WIDTH (10'd2)     // 字符边框的宽度
+) u4_add_grid (
+    .clk                (clk),               // 时钟信号
+    .rst_n              (rst_n),             // 复位信号
+    .per_frame_vsync    (pre_frame_vsync),   // 输入的场同步信号
+    .per_frame_href     (pre_frame_hsync),   // 输入的行同步信号
+    .per_frame_clken    (pre_frame_de),      // 输入的数据使能信号
+    .per_frame_rgb      (pre_rgb),           // 输入的RGB图像数据
+    .plate_boarder_up   (max_line_up),       // 车牌上边界
+    .plate_boarder_down (max_line_down),     // 车牌下边界
+    .plate_boarder_left (max_line_left),     // 车牌左边界
+    .plate_boarder_right(max_line_right),    // 车牌右边界
+    .plate_exist_flag   (1'b1),              // 车牌存在标志
+    .char_line_up       (char_line_up),      // 字符上边界
+    .char_line_down     (char_line_down),    // 字符下边界
+    .char1_line_left    (char1_line_left),   // 第1个字符的左边界
+    .char1_line_right   (char1_line_right),  // 第1个字符的右边界
+    .char2_line_left    (char2_line_left),   // 第2个字符的左边界
+    .char2_line_right   (char2_line_right),  // 第2个字符的右边界
+    .char3_line_left    (char3_line_left),   // 第3个字符的左边界
+    .char3_line_right   (char3_line_right),  // 第3个字符的右边界
+    .char4_line_left    (char4_line_left),   // 第4个字符的左边界
+    .char4_line_right   (char4_line_right),  // 第4个字符的右边界
+    .char5_line_left    (char5_line_left),   // 第5个字符的左边界
+    .char5_line_right   (char5_line_right),  // 第5个字符的右边界
+    .char6_line_left    (char6_line_left),   // 第6个字符的左边界
+    .char6_line_right   (char6_line_right),  // 第6个字符的右边界
+    .char7_line_left    (char7_line_left),   // 第7个字符的左边界
+    .char7_line_right   (char7_line_right),  // 第7个字符的右边界
+    // 输出视频流
+    .post_frame_vsync   (add_grid_vsync),    // 输出的场同步信号
+    .post_frame_href    (add_grid_href),     // 输出的行同步信号
+    .post_frame_clken   (add_grid_de),       // 输出的数据使能信号
+    .post_frame_rgb     (add_grid_rgb)       // 输出的带边框的图像
 );
 
-add_char u4_add_char(
-    //ʱ�Ӽ���λ
-    .clk             (clk     ),   // ʱ���ź�
-    .rst_n           (rst_n   ),   // ��λ�źţ�����Ч��
-    //������Ƶ��
-    .per_frame_vsync     (add_grid_vsync),
-    .per_frame_href      (add_grid_href ),
-    .per_frame_clken     (add_grid_de   ),
-    .per_frame_rgb       (add_grid_rgb  ),
-    //���Ʊ߽�
-    .plate_boarder_up    (max_line_up   ),
-    .plate_boarder_down  (max_line_down ),
-    .plate_boarder_left  (max_line_left ),   
-    .plate_boarder_right (max_line_right),
-    .plate_exist_flag    (1'b1          ),        
-    //����ģ��ƥ����
-    .match_index_char1   (match_index_char1),//(6'd2),//(match_index_char1)//(char1_eigenvalue[5:0])
-    .match_index_char2   (match_index_char2),//(6'd2),//(match_index_char2)//(char2_eigenvalue[5:0])
-    .match_index_char3   (match_index_char3),//(6'd2),//(match_index_char3)//(char3_eigenvalue[5:0])
-    .match_index_char4   (match_index_char4),//(6'd2),//(match_index_char4)//(char4_eigenvalue[5:0])
-    .match_index_char5   (match_index_char5),//(6'd2),//(match_index_char5)//(char5_eigenvalue[5:0])
-    .match_index_char6   (match_index_char6),//(6'd2),//(match_index_char6)//(char6_eigenvalue[5:0])
-    .match_index_char7   (match_index_char7),//(6'd2),//(match_index_char7)//(char7_eigenvalue[5:0])
-    //�����Ƶ��
-    .post_frame_vsync    (post_frame_vsync ),  // ��ͬ���ź�
-    .post_frame_href     (post_frame_hsync ),  // ��ͬ���ź�
-    .post_frame_clken    (post_frame_de    ),  // ��������ʹ��
-    .post_frame_rgb      (post_rgb         )   // RGB565��ɫ����
+// 4.2 添加识别出的字符到图像中
+add_char u4_add_char (
+    .clk                (clk),               // 时钟信号
+    .rst_n              (rst_n),             // 复位信号
+    .per_frame_vsync    (add_grid_vsync),    // 输入的场同步信号
+    .per_frame_href     (add_grid_href),     // 输入的行同步信号
+    .per_frame_clken    (add_grid_de),       // 输入的数据使能信号
+    .per_frame_rgb      (add_grid_rgb),      // 输入的带边框的RGB图像
+    .plate_boarder_up   (max_line_up),       // 车牌上边界
+    .plate_boarder_down (max_line_down),     // 车牌下边界
+    .plate_boarder_left (max_line_left),     // 车牌左边界
+    .plate_boarder_right(max_line_right),    // 车牌右边界
+    .plate_exist_flag   (1'b1),              // 车牌存在标志
+    .match_index_char1  (match_index_char1), // 第1个字符识别结果
+    .match_index_char2  (match_index_char2), // 第2个字符识别结果
+    .match_index_char3  (match_index_char3), // 第3个字符识别结果
+    .match_index_char4  (match_index_char4), // 第4个字符识别结果
+    .match_index_char5  (match_index_char5), // 第5个字符识别结果
+    .match_index_char6  (match_index_char6), // 第6个字符识别结果
+    .match_index_char7  (match_index_char7), // 第7个字符识别结果
+    // 输出最终结果的图像
+    .post_frame_vsync   (post_frame_vsync),  // 输出的场同步信号
+    .post_frame_href    (post_frame_hsync),  // 输出的行同步信号
+    .post_frame_clken   (post_frame_de),     // 输出的数据使能信号
+    .post_frame_rgb     (post_rgb)           // 输出的带字符识别结果的RGB图像
 );
-
-
-//----------------------------------------------------------------
 
 endmodule
